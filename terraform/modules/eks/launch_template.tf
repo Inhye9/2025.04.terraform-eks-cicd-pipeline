@@ -1,17 +1,11 @@
 ##########################################################################################
 ### Launch Template
 ##########################################################################################
-## 스크립트 정리하여 Custom AMI가 필요없음에도 시작템플릿에 Custom AMI ID를 설정한 이유
-# EKS v1.30 부터 AMI ID를 명시하지 않는 경우 AL2023을 기본 AMI로 사용함.
-# 한섬의 경우 현재 AL2를 사용하며, 호환성 검토 없이 마이그레이션 시 이슈를 방지하기 위해 AL2 기반 EKS 최적화 Public AMI ID를 명시하였음
-# Amazon Linux 2 EOL은 2026년 6월 30일까지로, 기존 솔루션들과의 호환성 확인 후 추후 마이그레이션 필요
-
 ## terraform-aws-modules-eks 모듈을 통해서 시작템플릿을 생성하지 않는 이유
 # terraform-aws-modules-eks 모듈에서는 'enable_bootstrap_user_data=true' Input을 설정하면 서브 모듈인 _user_data를 통해 Output으로 userdata를 생성해준다
 # 하지만 이 서브 모듈을 통해 생성된 userdata(output)은 서브 모듈인 eks-managed-node-group 내의 Input인 'create_launch_template=true'를 설정했을 때 생성된 시작템플릿에 붙도록 되어있다
 # 아래 eks-managed-node-group 서브 모듈 코드를 보면 1개의 시작템플릿만 생성하도록 되어있다
 # https://github.com/terraform-aws-modules/terraform-aws-eks/blob/master/modules/eks-managed-node-group/main.tf#L72
-# 한섬의 경우 역할별(app, batch, front, mgmt) 시작템플릿 분리가 필요하므로 별도 리소스로 생성함
 
 ## 서브 모듈인 _user_data를 직접 선언하여 사용하는 이유
 # 위의 EKS v1.30부터 AL2023을 사용하는 이슈로, AL2를 사용하도록 Custom AMI를 직접 지정해야한다
@@ -39,7 +33,7 @@ module "eks_user_data" {
   // 부트스트랩 실행 전(pre)
   pre_bootstrap_user_data = try(
     templatefile("${path.module}/userdata/${each.value.userdata[0]}", {
-      service   = var.service,
+      service   = var.project_name,
       env       = var.env,
       node_role = each.key,
       version   = replace(var.eks_version, ".", "_")
@@ -53,7 +47,7 @@ module "eks_user_data" {
   // 부트스트랩 실행 후(post)
   post_bootstrap_user_data = try(
     templatefile("${path.module}/userdata/${each.value.userdata[1]}", {
-      service   = var.service,
+      service   = var.project_name,
       env       = var.env,
       node_role = each.key
     }), ""
@@ -61,10 +55,9 @@ module "eks_user_data" {
 }
 
 resource "aws_launch_template" "lt" {  // 다른 모듈에서 key기반으로 for_each를 통해 사용해야하므로 output 별도 선언
-
   for_each = var.eks_nodegroup_info
   
-  name                   = "${var.service}-${var.env}-eks-${each.key}-template-v${replace(var.eks_version, ".", "_")}"
+  name                   = "${var.project_name}-${var.env}-eks-${each.key}-template-v${replace(var.eks_version, ".", "_")}"
   image_id               = each.value.image_id
   instance_type          = each.value.instance_type
   key_name               = var.lt_keypair_name
@@ -84,7 +77,7 @@ resource "aws_launch_template" "lt" {  // 다른 모듈에서 key기반으로 fo
     content {
       resource_type = tag_specifications.key
       tags = {
-        Service = var.service
+        Service = var.project_name
         Env     = var.env
       }
     }

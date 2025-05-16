@@ -1,6 +1,8 @@
+// 클러스터명 : [project_name]-[env]-cluster-v[eks_version]
 variable "region" {
   description = "AWS region"
   type        = string
+  default     = "ap-northeast-2"
 }
 
 variable "project_name" {
@@ -13,13 +15,14 @@ variable "profile" {
   type        = string
 }
 
-// 클러스터명 : [project_name]-[env]-cluster-v[eks_version]
 variable "env" {
   type        = string
+  default     = "test"
 }
 
 variable "eks_version" {
   type        = string
+  default     = "1.31"
 }
 
 variable "vpc_id" {
@@ -27,17 +30,17 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "eks_subnet_ids" {
-  description = "EKS 생성 시 설정하는 서브넷 목록(퍼블릭 서브넷 포함)"
-  type        = list(string)
-  default     = []
-}
+# variable "eks_subnet_ids" {
+#   description = "EKS 생성 시 설정하는 서브넷 목록(퍼블릭 서브넷 포함)"
+#   type        = list(string)
+#   default     = []
+# }
 
-variable "eks_controlplane_subnet_ids" {
-  description = "EKS 생성 시 컨트롤 플레인 ENI를 생성할 서브넷 목록"
-  type        = list(string)
-  default     = []  // 테스트용이 아닌 경우 private subnet만 설정 권장
-}
+# variable "eks_controlplane_subnet_ids" {
+#   description = "EKS 생성 시 컨트롤 플레인 ENI를 생성할 서브넷 목록"
+#   type        = list(string)
+#   default     = []  // 테스트용이 아닌 경우 private subnet만 설정 권장
+# }
 
 variable "eks_additional_sg_ids" {
   description = "EKS에 연결할 추가 보안그룹 ID 목록"
@@ -104,9 +107,8 @@ variable "lt_resource_tags" {
   default = ["instance", "volume", "network-interface"]
 }
 
-locals {  // Terraform으로 생성되는 모든 리소스에 부여할 태그
-  default_tags = {
-    Service = var.project_name
-    Env     = var.env
-  }
+
+variable "jenkins_ec2_arn" {
+  description = "Jenkins EC2 ARN"
+  type        = string
 }
